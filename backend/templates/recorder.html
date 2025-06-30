@@ -1,0 +1,142 @@
+<!-- templates/recorder.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Voice Recorder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #recordBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #stopBtn {
+            background-color: #f44336;
+            color: white;
+            display: none;
+        }
+
+        #transcriptDiv {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            text-align: left;
+            min-height: 100px;
+        }
+
+        .recording {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Voice Recorder with Deepgram Transcription</h1>
+
+    <button id="recordBtn" onclick="startRecording()">🎤 Start Recording</button>
+    <button id="stopBtn" onclick="stopRecording()">⏹️ Stop Recording</button>
+
+    <div id="status">Ready to record...</div>
+
+    <div id="transcriptDiv">
+        <h3>Transcript will appear here:</h3>
+        <p id="transcript">No transcript yet...</p>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // Use OGG format
+                const options = {
+                    mimeType: 'audio/ogg; codecs=opus'
+                };
+
+                mediaRecorder = new MediaRecorder(stream, options);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = function (event) {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = function () {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
+                    sendToServer(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+
+                document.getElementById('recordBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'inline-block';
+                document.getElementById('status').innerHTML = '<span class="recording">🔴 Recording...</span>';
+
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                document.getElementById('status').textContent = 'Error: Could not access microphone';
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+
+                document.getElementById('recordBtn').style.display = 'inline-block';
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('status').textContent = 'Processing...';
+            }
+        }
+
+        async function sendToServer(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.ogg');
+
+            try {
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('transcript').textContent = result.transcript;
+                    document.getElementById('status').textContent = 'Transcription complete!';
+                } else {
+                    document.getElementById('transcript').textContent = 'Error: ' + result.error;
+                    document.getElementById('status').textContent = 'Transcription failed';
+                }
+
+            } catch (error) {
+                console.error('Error sending audio:', error);
+                document.getElementById('status').textContent = 'Error sending audio to server';
+                document.getElementById('transcript').textContent = 'Network error occurred';
+            }
+        }
+    </script>
+</body>
+
+</html>
