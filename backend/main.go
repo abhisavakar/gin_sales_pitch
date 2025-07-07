@@ -26,3 +26,16 @@ func main() {
 // This code sets up a simple web server using Gin that responds with a JSON message when accessed at the root URL.
 // It listens on port 8080 and returns a JSON object with a message and status when the root endpoint is hit.
 // To run this code, ensure you have the Gin framework installed and run the program.       
+
+// You can test it by navigating to http://localhost:8080 in your web browser or using a tool like curl or Postman.
+
+// The server will respond with a JSON object like:
+// {
+
+
+
+
+
+
+//   "message": "Hello World!",
+//   "status": "success"                
